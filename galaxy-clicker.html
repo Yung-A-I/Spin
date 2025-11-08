@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Galaxy Spin</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Space Grotesk", "Inter", system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: #f4f8ff;
+      background: radial-gradient(circle at 25% 20%, #121433 0%, #060815 40%, #020208 100%);
+      overflow: hidden;
+      font-family: inherit;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      filter: drop-shadow(0 0 18px rgba(118, 147, 255, 0.3));
+      cursor: grab;
+      touch-action: none;
+      z-index: 0;
+    }
+
+    canvas:active {
+      cursor: grabbing;
+    }
+
+    .hud {
+      position: fixed;
+      top: clamp(10px, 3vw, 26px);
+      right: clamp(10px, 4vw, 32px);
+      z-index: 4;
+      width: min(260px, 42vw);
+      margin: 0;
+      background: rgba(5, 8, 21, 0.88);
+      border: 1px solid rgba(121, 168, 255, 0.25);
+      border-radius: 22px;
+      padding: 12px 16px;
+      backdrop-filter: blur(18px);
+      box-shadow: 0 20px 60px rgba(1, 3, 16, 0.65);
+    }
+
+    .hud-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: clamp(1.05rem, 2vw, 1.3rem);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .hud-info-button {
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 999px;
+      background: transparent;
+      color: inherit;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: border-color 180ms ease, color 180ms ease, background 180ms ease;
+    }
+
+    .hud-info-button:hover,
+    .hud-info-button:focus-visible {
+      border-color: rgba(152, 192, 255, 0.9);
+      background: rgba(152, 192, 255, 0.1);
+      outline: none;
+    }
+
+    .hud-description {
+      margin: 0;
+      color: rgba(244, 248, 255, 0.7);
+      line-height: 1.2;
+      font-size: 0.75rem;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      pointer-events: none;
+      transition: max-height 200ms ease, opacity 200ms ease, margin 200ms ease;
+    }
+
+    .hud.info-open .hud-description {
+      max-height: 160px;
+      opacity: 1;
+      pointer-events: auto;
+      margin-top: 6px;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .stat-card {
+      border-radius: 16px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(15, 20, 38, 0.8);
+    }
+
+    .stat-card span {
+      display: block;
+      font-size: 0.65rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(244, 248, 255, 0.52);
+      margin-bottom: 4px;
+    }
+
+    .stat-card strong {
+      font-size: 1.35rem;
+      display: block;
+    }
+
+    .stat-card small {
+      display: block;
+      margin-top: 2px;
+      color: rgba(244, 248, 255, 0.6);
+      font-size: 0.72rem;
+    }
+
+    .control-panel {
+      margin-top: 12px;
+    }
+
+    .toggle-button {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(18, 24, 48, 0.9);
+      color: inherit;
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: border-color 200ms ease, background 200ms ease, transform 200ms ease;
+    }
+
+    .toggle-button:hover:not(:disabled) {
+      border-color: rgba(152, 192, 255, 0.9);
+      background: rgba(36, 46, 86, 0.95);
+      transform: translateY(-2px);
+    }
+
+    .toggle-button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .upgrade-wrapper {
+      position: fixed;
+      right: clamp(12px, 4vw, 32px);
+      bottom: clamp(14px, 5vw, 40px);
+      width: min(340px, 80vw);
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: stretch;
+    }
+
+    .upgrade-icons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 4px;
+    }
+
+    .upgrade-icon {
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 12px;
+      background: rgba(15, 20, 38, 0.9);
+      color: rgba(244, 248, 255, 0.65);
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      cursor: pointer;
+      opacity: 0.45;
+      transition: opacity 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+    }
+
+    .upgrade-icon:focus-visible {
+      outline: 2px solid rgba(152, 192, 255, 0.8);
+      outline-offset: 3px;
+    }
+
+    .upgrade-icon.available {
+      opacity: 1;
+      color: #fff;
+      border-color: rgba(152, 192, 255, 0.9);
+      box-shadow: 0 0 10px rgba(117, 175, 255, 0.45);
+      transform: translateY(-1px);
+    }
+
+    .upgrade-icon.locked {
+      opacity: 0.35;
+      filter: grayscale(0.6);
+    }
+
+    .upgrade-icon.maxed {
+      opacity: 0.6;
+      border-color: rgba(138, 255, 214, 0.45);
+      box-shadow: none;
+    }
+
+    .upgrade-toggle {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(12, 16, 34, 0.92);
+      color: inherit;
+      font-size: 0.82rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: border-color 200ms ease, background 200ms ease, transform 200ms ease;
+    }
+
+    .upgrade-toggle:hover {
+      border-color: rgba(152, 192, 255, 0.85);
+      background: rgba(36, 46, 86, 0.95);
+      transform: translateY(-2px);
+    }
+
+    .upgrade-toggle:focus-visible {
+      outline: 2px solid rgba(152, 192, 255, 0.85);
+      outline-offset: 3px;
+    }
+
+    .upgrade-panel {
+      margin-top: 12px;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(5, 8, 21, 0.92);
+      padding: 16px 18px;
+      box-shadow: 0 30px 80px rgba(1, 3, 16, 0.9);
+      backdrop-filter: blur(18px);
+      max-height: min(58vh, 360px);
+      overflow-y: auto;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(12px) scale(0.98);
+      transition: opacity 200ms ease, transform 200ms ease;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 182, 255, 0.8) transparent;
+    }
+
+    .upgrade-panel::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .upgrade-panel::-webkit-scrollbar-thumb {
+      background: rgba(148, 182, 255, 0.8);
+      border-radius: 999px;
+    }
+
+    .upgrade-panel::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .upgrade-wrapper.hovering .upgrade-panel,
+    .upgrade-wrapper:focus-within .upgrade-panel,
+    .upgrade-wrapper.open .upgrade-panel {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0) scale(1);
+    }
+
+    .upgrade-panel h2 {
+      margin: 0 0 12px;
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(244, 248, 255, 0.75);
+    }
+
+    .upgrade-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-right: 6px;
+    }
+
+    .upgrade-button {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(20, 26, 50, 0.88);
+      color: inherit;
+      cursor: pointer;
+      text-align: left;
+      transition: transform 200ms ease, border-color 200ms ease, opacity 200ms ease;
+    }
+
+    .upgrade-button:hover:not(.disabled) {
+      transform: translateY(-3px);
+      border-color: rgba(152, 192, 255, 0.85);
+    }
+
+    .upgrade-button.disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .upgrade-button strong {
+      font-size: 0.95rem;
+    }
+
+    .upgrade-button span {
+      font-size: 0.82rem;
+      color: rgba(244, 248, 255, 0.75);
+    }
+
+    .upgrade-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 0.75rem;
+      color: #96d6ff;
+    }
+
+    .floating-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3;
+      font-size: 0.95rem;
+    }
+
+    .floating-point {
+      position: absolute;
+      color: #aee8ff;
+      text-shadow: 0 0 6px rgba(110, 200, 255, 0.8);
+      animation: floatUp 1.2s ease-out forwards;
+      opacity: 0;
+    }
+
+    @keyframes floatUp {
+      0% {
+        transform: translate(-50%, 0) scale(0.9);
+        opacity: 0;
+      }
+      10% {
+        opacity: 1;
+      }
+      100% {
+        transform: translate(-50%, -60px) scale(1);
+        opacity: 0;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .hud {
+        width: min(220px, 68vw);
+        top: clamp(10px, 6vw, 18px);
+        right: clamp(10px, 6vw, 24px);
+        padding: 10px 12px;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .upgrade-wrapper {
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%);
+        width: min(520px, 98vw);
+        bottom: max(10px, calc(env(safe-area-inset-bottom) + 6px));
+        align-items: stretch;
+      }
+
+      .upgrade-icons {
+        justify-content: center;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+      }
+
+      .upgrade-toggle {
+        font-size: 0.78rem;
+        min-height: 44px;
+      }
+
+      .upgrade-panel {
+        max-height: min(55vh, 320px);
+        padding: 14px 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+<canvas id="galaxy"></canvas>
+<div id="hudPanel" class="hud">
+  <header class="hud-header">
+    <div class="hud-title-row">
+      <h1>Galaxy Spin</h1>
+      <button id="infoToggle" class="hud-info-button" type="button" aria-pressed="false" aria-expanded="false" aria-controls="hudDescription">Info</button>
+    </div>
+    <p id="hudDescription" class="hud-description">Baue aus wenigen Sternen eine ganze Galaxie auf. Tippen oder ziehen, um Energie zu sammeln und Upgrades zu kaufen.</p>
+  </header>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span>Punkte</span>
+      <strong id="pointsValue">0</strong>
+      <small id="clickValue">+1 pro Umdrehung</small>
+    </div>
+    <div class="stat-card">
+      <span>Ertrag/Umdrehung</span>
+      <strong id="ppsValue">0</strong>
+      <small id="progressValue">0 % aufgebaut</small>
+    </div>
+  </div>
+  <div class="control-panel">
+    <button id="passiveSpinToggle" class="toggle-button" disabled>Passive Spin: Aus</button>
+  </div>
+</div>
+<div id="upgradeWrapper" class="upgrade-wrapper" aria-label="Upgrade-Bereich">
+  <div id="upgradeBadges" class="upgrade-icons" aria-label="Upgrade-Status"></div>
+  <button id="upgradeToggle" class="upgrade-toggle" aria-haspopup="true" aria-expanded="false">
+    Upgrades
+  </button>
+  <div class="upgrade-panel" role="region" aria-label="Upgrade-Liste">
+    <h2>Upgrades</h2>
+    <div id="upgradeList" class="upgrade-list"></div>
+  </div>
+</div>
+<div id="floatingLayer" class="floating-layer"></div>
+<script>
+  const canvas = document.getElementById('galaxy');
+const ctx = canvas.getContext('2d');
+const hudPanel = document.getElementById('hudPanel');
+const infoToggle = document.getElementById('infoToggle');
+const hudDescription = document.getElementById('hudDescription');
+const pointsValue = document.getElementById('pointsValue');
+const ppsValue = document.getElementById('ppsValue');
+const clickValueLabel = document.getElementById('clickValue');
+const progressValue = document.getElementById('progressValue');
+const upgradeList = document.getElementById('upgradeList');
+const upgradeBadges = document.getElementById('upgradeBadges');
+const upgradeWrapper = document.getElementById('upgradeWrapper');
+const upgradeToggle = document.getElementById('upgradeToggle');
+const floatingLayer = document.getElementById('floatingLayer');
+const passiveSpinToggle = document.getElementById('passiveSpinToggle');
+const numberFormat = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 });
+const SHORT_NUMBER_LABELS = [
+  { value: 1e9, suffix: ' Mrd' },
+  { value: 1e6, suffix: ' Mio' },
+  { value: 1e3, suffix: ' Tsd' }
+];
+
+const PARTICLE_COUNT = 4500;
+const INNER_GAP = 0.18;
+const SPARKLE_COUNT = 110;
+const BASE_ZOOM = 1.45;
+const MIN_ZOOM = 0.55;
+const MAX_ZOOM = 2.6;
+const BASE_OFFSET_Y_RATIO = 0.1;
+const MAX_SPIN_VELOCITY = 0.045;
+const BASE_MANUAL_SPIN_LIMIT = 0.005;
+const MAX_MANUAL_SPIN_LIMIT = 0.03;
+const SPIN_DECAY_PER_MS = 0.99955;
+const SPIN_EJECTION_THRESHOLD = 0.0013;
+const SPIN_EJECTION_GAIN = 0.0045;
+const TWO_PI = Math.PI * 2;
+const RELEASE_EJECTION_GAIN = 1.25;
+const MAX_EJECTION_LEVEL = 3.2;
+const EJECTION_DECAY_PER_MS = 0.0006;
+const RADIAL_FORCE = 0.23;
+const RADIAL_DRAG = 0.975;
+const RADIAL_RETENTION = 0.64;
+const RADIAL_SETTLE_THRESHOLD = 0.22;
+const RADIAL_SETTLE_DAMP = 0.93;
+const SPARKLE_BASE_DRIFT = 0.00008;
+const SPARKLE_WIND_COUPLING = 0.35;
+const CHAIN_COUNT = 1;
+const CHAIN_LENGTH = 120;
+const CHAIN_SPACING = 5;
+const CHAIN_BASE_SPEED = 0.7;
+const CHAIN_GRAVITY = 0.00016;
+const CHAIN_SPAWN_CHANCE = 0.0065;
+const CHAIN_BUFFER = 320;
+const MAX_CHAIN_SLOTS = 4;
+const PASSIVE_SPIN_BASE = 0.0015;
+const PASSIVE_SPIN_RANGE = 0.02;
+const ROTATION_SCORE_STEP = TWO_PI;
+const COLOR_SHIFT_RANGE_DEG = 360;
+const COLOR_PITCH_RANGE = Math.PI * 1.75; // larger value = slower change
+const INITIAL_PITCH = 0.58;
+const particles = [];
+const sparkles = [];
+const chains = [];
+let width = 0;
+let height = 0;
+let centerX = 0;
+let centerY = 0;
+let galaxyRadius = 0;
+let baseDistance = 0;
+let zoom = BASE_ZOOM;
+let yaw = 0.38;
+let pitch = INITIAL_PITCH;
+let sparkleYaw = yaw;
+let sparklePitch = pitch;
+let cameraOffsetX = 0;
+let cameraOffsetY = 0;
+let baseCameraOffsetX = 0;
+let baseCameraOffsetY = 0;
+let spinVelocity = 0;
+let sparkleSpinVelocity = SPARKLE_BASE_DRIFT;
+let ejectionLevel = 0;
+let lastFrameTime = performance.now();
+let orbitDirection = 1;
+let passiveSpinCurrent = 0;
+let rotationProgress = 0;
+let passiveSpinUnlocked = false;
+let passiveSpinEnabled = false;
+const effectKeys = ['particleFill', 'spinFactor', 'gradientRichness', 'glow', 'sparkleDensity', 'chainActivity', 'spinCap'];
+const gameState = {
+  points: 0,
+  rotationBonus: 0,
+  clickValue: 1,
+  chainBonus: 6,
+  lastHudUpdate: performance.now(),
+  targets: {
+    particleFill: 0.006,
+    spinFactor: 0,
+    gradientRichness: 0.08,
+    glow: 0.1,
+    sparkleDensity: 0,
+    chainActivity: 0,
+    spinCap: 0
+  },
+  effects: {}
+};
+gameState.effects = { ...gameState.targets };
+const upgradeDefinitions = [
+  {
+    id: 'starfield',
+    icon: '✴️',
+    label: 'Sternstaub-Booster',
+    description: 'Mehr sichtbare Sterne, stärkerer Glow und Klickertrag.',
+    baseCost: 12,
+    costScale: 1.65,
+    maxLevel: 6,
+    reward(state) {
+      adjustTarget('particleFill', 0.12);
+      adjustTarget('glow', 0.05);
+      state.clickValue += 0.4;
+      state.rotationBonus += 0.08;
+    }
+  },
+  {
+    id: 'spin',
+    icon: '🌀',
+    label: 'Trägheitsdrehung',
+    description: 'Erweckt die Spiralrotation und liefert leichte Passivpunkte.',
+    baseCost: 40,
+    costScale: 1.7,
+    maxLevel: 5,
+    reward(state) {
+      adjustTarget('spinFactor', 0.05);
+      adjustTarget('spinCap', 0.12);
+      passiveSpinUnlocked = true;
+      passiveSpinEnabled = true;
+      updateSpinToggleState();
+      state.rotationBonus += 0.06;
+    }
+  },
+  {
+    id: 'spectrum',
+    icon: '🌈',
+    label: 'Chromatischer Staub',
+    description: 'Baut den Farbverlauf aus und lässt den Kern intensiver glühen.',
+    baseCost: 85,
+    costScale: 1.8,
+    maxLevel: 4,
+    reward(state) {
+      adjustTarget('gradientRichness', 0.22);
+      adjustTarget('glow', 0.08);
+      state.rotationBonus += 0.16;
+    }
+  },
+  {
+    id: 'sparkles',
+    icon: '✨',
+    label: 'Halo-Flares',
+    description: 'Lockere Partikelketten und Funken füllen den Hintergrund.',
+    baseCost: 150,
+    costScale: 1.8,
+    maxLevel: 4,
+    reward(state) {
+      adjustTarget('sparkleDensity', 0.28);
+      adjustTarget('glow', 0.06);
+      state.rotationBonus += 0.2;
+    }
+  },
+  {
+    id: 'chains',
+    icon: '🔗',
+    label: 'Lichtketten',
+    description: 'Aktiviert Bonusketten – Klicks darauf geben Extrapunkte.',
+    baseCost: 260,
+    costScale: 1.85,
+    maxLevel: 3,
+    reward(state) {
+      adjustTarget('chainActivity', 0.4);
+      state.chainBonus += 4;
+      state.rotationBonus += 0.22;
+    }
+  },
+  {
+    id: 'singularity',
+    icon: '💠',
+    label: 'Singularitätskern',
+    description: 'Lässt die Galaxie wie im Endzustand erstrahlen.',
+    baseCost: 900,
+    costScale: 1,
+    maxLevel: 1,
+    reward(state) {
+      for (const key of effectKeys) {
+        adjustTarget(key, 1, true);
+      }
+      passiveSpinUnlocked = true;
+      passiveSpinEnabled = true;
+      updateSpinToggleState();
+      state.clickValue += 4;
+      state.rotationBonus += 2.5;
+    }
+  }
+];
+const upgrades = upgradeDefinitions.map(createUpgradeEntry);
+refreshUpgradeButtons();
+updateHud(true);
+passiveSpinToggle.addEventListener('click', togglePassiveSpin);
+updateSpinToggleState();
+setupUpgradeDrawer();
+setupInfoToggle();
+
+const pointer = {
+  dragging: false,
+  lastX: 0,
+  lastY: 0,
+  lastTime: 0,
+  yawVelocity: 0,
+  pitchVelocity: 0,
+  spinAccumulator: 0,
+  affectsSparkles: false
+};
+
+const activeTouchPointers = new Map();
+let pinchLastDistance = null;
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function wrapAngle(angle) {
+  if (!Number.isFinite(angle)) {
+    return 0;
+  }
+  angle = ((angle + Math.PI) % TWO_PI + TWO_PI) % TWO_PI - Math.PI;
+  return angle;
+}
+
+function limitCameraOffset() {
+  if (!galaxyRadius) return;
+  const limit = galaxyRadius * 0.95;
+  cameraOffsetX = clamp(cameraOffsetX, -limit, limit);
+  cameraOffsetY = clamp(cameraOffsetY, -limit, limit);
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function storeTouchPointer(event) {
+  if (event.pointerType !== 'touch') return;
+  activeTouchPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+}
+
+function removeTouchPointer(event) {
+  if (event.pointerType !== 'touch') return;
+  activeTouchPointers.delete(event.pointerId);
+}
+
+function computePinchSnapshot() {
+  if (activeTouchPointers.size < 2) {
+    return null;
+  }
+  const touches = Array.from(activeTouchPointers.values());
+  const first = touches[0];
+  const second = touches[1];
+  const dx = second.x - first.x;
+  const dy = second.y - first.y;
+  const distance = Math.hypot(dx, dy);
+  return {
+    distance,
+    centerX: (first.x + second.x) / 2,
+    centerY: (first.y + second.y) / 2
+  };
+}
+
+function createUpgradeEntry(definition) {
+  const upgrade = {
+    ...definition,
+    cost: definition.baseCost,
+    level: 0
+  };
+  createUpgradeButton(upgrade);
+  createUpgradeBadge(upgrade);
+  return upgrade;
+}
+
+function createUpgradeButton(upgrade) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'upgrade-button';
+  button.innerHTML = `
+    <strong>${upgrade.icon} ${upgrade.label}</strong>
+    <span>${upgrade.description}</span>
+    <div class="upgrade-meta">
+      <span data-role="cost">-</span>
+      <span data-role="level">Lvl 0</span>
+    </div>
+  `;
+  button.addEventListener('click', () => tryPurchaseUpgrade(upgrade));
+  upgrade.button = button;
+  upgrade.costEl = button.querySelector('[data-role="cost"]');
+  upgrade.levelEl = button.querySelector('[data-role="level"]');
+  upgradeList.appendChild(button);
+}
+
+function createUpgradeBadge(upgrade) {
+  if (!upgradeBadges) {
+    return;
+  }
+  const badge = document.createElement('button');
+  badge.type = 'button';
+  badge.className = 'upgrade-icon locked';
+  badge.textContent = upgrade.icon;
+  badge.setAttribute('aria-label', `${upgrade.label}`);
+  badge.addEventListener('click', (event) => {
+    event.preventDefault();
+    openUpgradeDrawer();
+    if (upgrade.button) {
+      requestAnimationFrame(() => {
+        upgrade.button.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    }
+  });
+  upgradeBadges.appendChild(badge);
+  upgrade.badgeEl = badge;
+}
+
+function adjustTarget(key, delta, absolute = false) {
+  if (!Object.prototype.hasOwnProperty.call(gameState.targets, key)) {
+    return;
+  }
+  if (absolute) {
+    gameState.targets[key] = clamp(delta, 0, 1);
+    return;
+  }
+  gameState.targets[key] = clamp(gameState.targets[key] + delta, 0, 1);
+}
+
+function refreshUpgradeButtons() {
+  for (const upgrade of upgrades) {
+    if (!upgrade.button) continue;
+    const maxed = upgrade.level >= upgrade.maxLevel;
+    const canAfford = gameState.points >= upgrade.cost;
+    if (upgrade.costEl) {
+      upgrade.costEl.textContent = maxed ? 'Max' : `${formatNumber(upgrade.cost)} P`;
+    }
+    if (upgrade.levelEl) {
+      upgrade.levelEl.textContent = `Lvl ${upgrade.level}/${upgrade.maxLevel}`;
+    }
+    upgrade.button.classList.toggle('disabled', maxed || !canAfford);
+    if (upgrade.badgeEl) {
+      const badge = upgrade.badgeEl;
+      badge.classList.toggle('available', !maxed && canAfford);
+      badge.classList.toggle('maxed', maxed);
+      badge.classList.toggle('locked', upgrade.level === 0 && !canAfford);
+      const stateLabel = maxed
+        ? 'Maximiert'
+        : canAfford
+          ? 'Verfügbar'
+          : 'Nicht genug Punkte';
+      badge.setAttribute('aria-label', `${upgrade.label} – ${stateLabel} (${upgrade.level}/${upgrade.maxLevel})`);
+    }
+  }
+  updateSpinToggleState();
+}
+
+function tryPurchaseUpgrade(upgrade) {
+  if (!upgrade || upgrade.level >= upgrade.maxLevel || gameState.points < upgrade.cost) {
+    return;
+  }
+  gameState.points -= upgrade.cost;
+  upgrade.level += 1;
+  if (typeof upgrade.reward === 'function') {
+    upgrade.reward(gameState, upgrade.level);
+  }
+  upgrade.cost = Math.ceil(upgrade.cost * upgrade.costScale);
+  updateHud(true);
+  refreshUpgradeButtons();
+}
+
+function togglePassiveSpin() {
+  if (!passiveSpinUnlocked) {
+    return;
+  }
+  passiveSpinEnabled = !passiveSpinEnabled;
+  updateSpinToggleState();
+}
+
+function updateSpinToggleState() {
+  if (!passiveSpinToggle) return;
+  passiveSpinToggle.disabled = !passiveSpinUnlocked;
+  const status = passiveSpinEnabled && passiveSpinUnlocked ? 'AN' : 'AUS';
+  passiveSpinToggle.textContent = `Passive Spin: ${status}`;
+}
+
+function updateUpgradeToggleAria() {
+  if (!upgradeWrapper || !upgradeToggle) {
+    return;
+  }
+  const expanded = upgradeWrapper.classList.contains('open') ||
+    upgradeWrapper.classList.contains('hovering') ||
+    (document.activeElement && upgradeWrapper.contains(document.activeElement));
+  upgradeToggle.setAttribute('aria-expanded', String(expanded));
+}
+
+function openUpgradeDrawer() {
+  if (!upgradeWrapper) {
+    return;
+  }
+  if (!upgradeWrapper.classList.contains('open')) {
+    upgradeWrapper.classList.add('open');
+    updateUpgradeToggleAria();
+  } else {
+    updateUpgradeToggleAria();
+  }
+}
+
+function closeUpgradeDrawer() {
+  if (!upgradeWrapper) {
+    return;
+  }
+  if (upgradeWrapper.classList.contains('open')) {
+    upgradeWrapper.classList.remove('open');
+    updateUpgradeToggleAria();
+  }
+}
+
+function setupUpgradeDrawer() {
+  if (!upgradeWrapper || !upgradeToggle) {
+    return;
+  }
+
+  const hoverQuery = window.matchMedia ? window.matchMedia('(hover: hover) and (pointer: fine)') : null;
+  let hoverEnabled = hoverQuery ? hoverQuery.matches : true;
+
+  const syncHoverCapability = (enabled) => {
+    hoverEnabled = enabled;
+    if (!hoverEnabled) {
+      upgradeWrapper.classList.remove('hovering');
+      updateUpgradeToggleAria();
+    }
+  };
+
+  if (hoverQuery) {
+    const hoverListener = (event) => syncHoverCapability(event.matches);
+    if (typeof hoverQuery.addEventListener === 'function') {
+      hoverQuery.addEventListener('change', hoverListener);
+    } else if (typeof hoverQuery.addListener === 'function') {
+      hoverQuery.addListener(hoverListener);
+    }
+  }
+
+  upgradeToggle.addEventListener('click', (event) => {
+    event.preventDefault();
+    if (upgradeWrapper.classList.contains('open')) {
+      closeUpgradeDrawer();
+    } else {
+      openUpgradeDrawer();
+    }
+  });
+
+  upgradeWrapper.addEventListener('pointerenter', (event) => {
+    if (!hoverEnabled || event.pointerType === 'touch') {
+      return;
+    }
+    upgradeWrapper.classList.add('hovering');
+    updateUpgradeToggleAria();
+  });
+
+  upgradeWrapper.addEventListener('pointerleave', (event) => {
+    if (!hoverEnabled || event.pointerType === 'touch') {
+      return;
+    }
+    upgradeWrapper.classList.remove('hovering');
+    updateUpgradeToggleAria();
+  });
+
+  upgradeWrapper.addEventListener('focusin', updateUpgradeToggleAria);
+  upgradeWrapper.addEventListener('focusout', () => {
+    requestAnimationFrame(updateUpgradeToggleAria);
+  });
+
+  document.addEventListener('pointerdown', (event) => {
+    if (!upgradeWrapper.classList.contains('open')) {
+      return;
+    }
+    if (upgradeWrapper.contains(event.target)) {
+      return;
+    }
+    closeUpgradeDrawer();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !upgradeWrapper.classList.contains('open')) {
+      return;
+    }
+    closeUpgradeDrawer();
+  });
+
+  updateUpgradeToggleAria();
+}
+
+function setupInfoToggle() {
+  if (!hudPanel || !infoToggle) {
+    return;
+  }
+  const setState = (open) => {
+    hudPanel.classList.toggle('info-open', open);
+    infoToggle.setAttribute('aria-pressed', String(open));
+    infoToggle.setAttribute('aria-expanded', String(open));
+  };
+  infoToggle.addEventListener('click', (event) => {
+    event.preventDefault();
+    const next = !hudPanel.classList.contains('info-open');
+    setState(next);
+  });
+}
+
+function getManualSpinLimit() {
+  const cap = clamp(gameState.effects.spinCap || 0, 0, 1);
+  return BASE_MANUAL_SPIN_LIMIT + cap * (MAX_MANUAL_SPIN_LIMIT - BASE_MANUAL_SPIN_LIMIT);
+}
+
+function computePassiveSpinSpeed() {
+  if (!passiveSpinUnlocked || !passiveSpinEnabled) {
+    return 0;
+  }
+  const factor = clamp(gameState.effects.spinFactor || 0, 0, 1);
+  if (factor <= 0) {
+    return 0;
+  }
+  return clamp(PASSIVE_SPIN_BASE + factor * PASSIVE_SPIN_RANGE, 0, MAX_SPIN_VELOCITY);
+}
+
+function accumulateRotationRewards(spinSpeed, delta) {
+  if (!Number.isFinite(spinSpeed) || !Number.isFinite(delta) || delta <= 0) {
+    return;
+  }
+  rotationProgress += Math.abs(spinSpeed) * delta;
+  if (rotationProgress < ROTATION_SCORE_STEP) {
+    return;
+  }
+  const rotations = Math.floor(rotationProgress / ROTATION_SCORE_STEP);
+  rotationProgress -= rotations * ROTATION_SCORE_STEP;
+  const payoutPerRotation = Math.max(0, gameState.clickValue + gameState.rotationBonus);
+  const reward = rotations * payoutPerRotation;
+  if (reward > 0) {
+    addPoints(reward);
+  }
+}
+
+function formatNumber(value) {
+  if (!Number.isFinite(value)) {
+    return '0';
+  }
+  const abs = Math.abs(value);
+  for (const label of SHORT_NUMBER_LABELS) {
+    if (abs >= label.value) {
+      return `${numberFormat.format(value / label.value)}${label.suffix}`;
+    }
+  }
+  return numberFormat.format(value);
+}
+
+function computeProgress() {
+  let total = 0;
+  for (const key of effectKeys) {
+    total += gameState.effects[key] || 0;
+  }
+  return clamp(total / effectKeys.length, 0, 1);
+}
+
+function updateHud(force = false) {
+  const now = performance.now();
+  if (!force && now - gameState.lastHudUpdate < 120) {
+    return;
+  }
+  pointsValue.textContent = formatNumber(gameState.points);
+  const perRotation = Math.max(0, gameState.clickValue + gameState.rotationBonus);
+  ppsValue.textContent = `${numberFormat.format(perRotation)} P`;
+  clickValueLabel.textContent = `+${numberFormat.format(gameState.clickValue)} pro Umdrehung`;
+  progressValue.textContent = `${Math.round(computeProgress() * 100)} % aufgebaut`;
+  gameState.lastHudUpdate = now;
+  refreshUpgradeButtons();
+}
+
+function spawnFloatingText(text, clientX, clientY) {
+  if (!floatingLayer) return;
+  const bubble = document.createElement('span');
+  bubble.className = 'floating-point';
+  bubble.textContent = text;
+  bubble.style.left = `${clientX}px`;
+  bubble.style.top = `${clientY}px`;
+  floatingLayer.appendChild(bubble);
+  requestAnimationFrame(() => {
+    bubble.style.opacity = '1';
+  });
+  setTimeout(() => {
+    bubble.remove();
+  }, 1200);
+}
+
+function addPoints(amount, clientX, clientY) {
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return;
+  }
+  gameState.points += amount;
+  if (clientX !== undefined && clientY !== undefined) {
+    spawnFloatingText(`+${numberFormat.format(amount)}`, clientX, clientY);
+  }
+  updateHud(true);
+}
+
+function getCanvasPoint(clientX, clientY) {
+  if (!canvas) return null;
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) {
+    return null;
+  }
+  const scaleX = width / rect.width;
+  const scaleY = height / rect.height;
+  return {
+    x: (clientX - rect.left) * scaleX,
+    y: (clientY - rect.top) * scaleY
+  };
+}
+
+function tryCollectChainBonus(event) {
+  if (event.pointerType === 'touch' && activeTouchPointers.size > 1) {
+    return;
+  }
+  if ((gameState.effects.chainActivity || 0) <= 0 || !chains.length) {
+    return;
+  }
+  const point = getCanvasPoint(event.clientX, event.clientY);
+  if (!point) return;
+  const radius = 35 + gameState.effects.chainActivity * 55;
+  for (const chain of chains) {
+    const dx = point.x - chain.x;
+    const dy = point.y - chain.y;
+    if (dx * dx + dy * dy <= radius * radius) {
+      const bonus = gameState.chainBonus * (1 + gameState.effects.chainActivity * 2.4);
+      addPoints(bonus, event.clientX, event.clientY);
+      chain.alpha *= 0.4;
+      return;
+    }
+  }
+}
+
+function advanceGame(delta) {
+  const seconds = delta / 1000;
+  if (!Number.isFinite(seconds) || seconds <= 0) {
+    return;
+  }
+  const smoothing = 1 - Math.pow(0.8, seconds * 60);
+  for (const key of effectKeys) {
+    const target = gameState.targets[key];
+    const current = gameState.effects[key];
+    gameState.effects[key] = current + (target - current) * smoothing;
+  }
+}
+
+function isPointInsideGalaxy(clientX, clientY) {
+  if (!canvas || !galaxyRadius) {
+    return false;
+  }
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = (clientX - rect.left) * scaleX;
+  const y = (clientY - rect.top) * scaleY;
+  const focusX = centerX - cameraOffsetX * zoom;
+  const focusY = centerY - cameraOffsetY * zoom;
+  const dx = x - focusX;
+  const dy = y - focusY;
+  const threshold = galaxyRadius * zoom * 0.85;
+  return dx * dx + dy * dy <= threshold * threshold;
+}
+
+function applyZoomFromClient(factor, clientX = centerX, clientY = centerY) {
+  if (!Number.isFinite(factor) || factor === 0 || !Number.isFinite(clientX) || !Number.isFinite(clientY)) {
+    return;
+  }
+
+  const prevZoom = zoom;
+  const newZoom = clamp(prevZoom * factor, MIN_ZOOM, MAX_ZOOM);
+  if (newZoom === prevZoom) {
+    return;
+  }
+
+  const zoomingOut = newZoom < prevZoom;
+
+  if (zoomingOut) {
+    zoom = newZoom;
+    if (prevZoom > 0) {
+      const decay = Math.pow(newZoom / prevZoom, 0.65);
+      cameraOffsetX = baseCameraOffsetX + (cameraOffsetX - baseCameraOffsetX) * decay;
+      cameraOffsetY = baseCameraOffsetY + (cameraOffsetY - baseCameraOffsetY) * decay;
+    }
+
+    const pullStrength = clamp(1 - newZoom / BASE_ZOOM, 0, 1);
+    const pull = 0.18 + pullStrength * 0.55;
+    const damping = clamp(1 - pull, 0, 1);
+    cameraOffsetX = baseCameraOffsetX + (cameraOffsetX - baseCameraOffsetX) * damping;
+    cameraOffsetY = baseCameraOffsetY + (cameraOffsetY - baseCameraOffsetY) * damping;
+
+    if (Math.abs(cameraOffsetX - baseCameraOffsetX) < 0.01) cameraOffsetX = baseCameraOffsetX;
+    if (Math.abs(cameraOffsetY - baseCameraOffsetY) < 0.01) cameraOffsetY = baseCameraOffsetY;
+  } else {
+    const worldX = cameraOffsetX + (clientX - centerX) / prevZoom;
+    const worldY = cameraOffsetY + (clientY - centerY) / prevZoom;
+
+    zoom = newZoom;
+    cameraOffsetX = worldX - (clientX - centerX) / zoom;
+    cameraOffsetY = worldY - (clientY - centerY) / zoom;
+  }
+
+  if (Math.abs(zoom - BASE_ZOOM) < 0.01) {
+    zoom = BASE_ZOOM;
+    cameraOffsetX = baseCameraOffsetX;
+    cameraOffsetY = baseCameraOffsetY;
+  }
+
+  limitCameraOffset();
+}
+
+function resize() {
+  const previousRadius = galaxyRadius || 0;
+  const previousBaseOffsetY = previousRadius ? previousRadius * BASE_OFFSET_Y_RATIO : 0;
+
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.round(window.innerWidth * dpr);
+  canvas.height = Math.round(window.innerHeight * dpr);
+  canvas.style.width = window.innerWidth + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  width = canvas.width / dpr;
+  height = canvas.height / dpr;
+  centerX = width / 2;
+  centerY = height / 2;
+  galaxyRadius = Math.min(width, height) * 0.5;
+  baseDistance = Math.min(width, height) * 1.35;
+  baseCameraOffsetX = 0;
+  baseCameraOffsetY = galaxyRadius * BASE_OFFSET_Y_RATIO;
+
+  if (previousRadius > 0) {
+    const scale = galaxyRadius / previousRadius;
+    cameraOffsetX = baseCameraOffsetX + (cameraOffsetX - baseCameraOffsetX) * scale;
+    cameraOffsetY = baseCameraOffsetY + (cameraOffsetY - previousBaseOffsetY) * scale;
+  } else {
+    cameraOffsetX = baseCameraOffsetX;
+    cameraOffsetY = baseCameraOffsetY;
+  }
+
+  limitCameraOffset();
+  initSparkles();
+  initChains();
+  sparkleYaw = yaw;
+  sparklePitch = pitch;
+  sparkleSpinVelocity = SPARKLE_BASE_DRIFT;
+}
+
+function initParticles() {
+  particles.length = 0;
+  const armCount = 4;
+
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const radiusNorm = INNER_GAP + Math.pow(Math.random(), 1.5) * (1 - INNER_GAP);
+    const radialJitter = (Math.random() - 0.5) * 0.04;
+    const orbitalSpeed = 0.00032 + Math.random() * 0.0011;
+    const heightNorm = (Math.random() - 0.5) * 0.4;
+    const verticalAmpNorm = 0.002 + Math.random() * 0.007;
+    const arm = Math.floor(Math.random() * armCount);
+    const armOffset = arm * (Math.PI * 2 / armCount);
+    const angleJitter = (Math.random() - 0.5) * 0.32;
+    const baseHue = 190 + Math.random() * 50;
+    const lightness = 55 + Math.random() * 25;
+    const alpha = 0.38 + Math.random() * 0.42;
+
+    particles.push({
+      radiusNorm,
+      radialJitter,
+      angle: Math.random() * Math.PI * 2,
+      orbitalSpeed,
+      heightNorm,
+      verticalAmpNorm,
+      armOffset,
+      angleJitter,
+      size: (0.6 + Math.random() * 1.4) * (0.55 + (1 - radiusNorm) * 0.9),
+      glow: 0.16 + Math.random() * 0.45,
+      noisePhase: Math.random() * Math.PI * 2,
+      escapeWeight: 0.4 + Math.random() * 1.2,
+      escapePhase: Math.random() * Math.PI * 2,
+      escapeCurve: 0.6 + Math.random() * 0.8,
+      radialOffset: 0,
+      radialVelocity: 0,
+      bandPosition: Math.random(),
+      baseHue,
+      lightness,
+      alpha
+    });
+  }
+}
+
+function initSparkles() {
+  sparkles.length = 0;
+  if (!galaxyRadius) {
+    return;
+  }
+
+  for (let i = 0; i < SPARKLE_COUNT; i++) {
+    const radius = galaxyRadius * (0.7 + Math.random() * 1.9);
+    sparkles.push({
+      radius,
+      height: (Math.random() - 0.5) * galaxyRadius * 0.18,
+      angle: Math.random() * Math.PI * 2,
+      speed: (Math.random() * 0.00035 + 0.00008) * (Math.random() < 0.5 ? -1 : 1),
+      flickerPhase: Math.random() * Math.PI * 2,
+      flickerSpeed: 0.001 + Math.random() * 0.0015,
+      size: 0.6 + Math.random() * 2.2,
+      bandPosition: Math.random(),
+      baseHue: 185 + Math.random() * 70
+    });
+  }
+}
+
+function createChain() {
+  const edge = Math.floor(Math.random() * 4);
+  let x, y, vx, vy;
+  switch (edge) {
+    case 0:
+      x = Math.random() * width;
+      y = -CHAIN_BUFFER;
+      vx = (Math.random() - 0.5) * 0.5;
+      vy = Math.random() * 0.6 + 0.4;
+      break;
+    case 1:
+      x = Math.random() * width;
+      y = height + CHAIN_BUFFER;
+      vx = (Math.random() - 0.5) * 0.5;
+      vy = -(Math.random() * 0.6 + 0.4);
+      break;
+    case 2:
+      x = -CHAIN_BUFFER;
+      y = Math.random() * height;
+      vx = Math.random() * 0.6 + 0.4;
+      vy = (Math.random() - 0.5) * 0.5;
+      break;
+    default:
+      x = width + CHAIN_BUFFER;
+      y = Math.random() * height;
+      vx = -(Math.random() * 0.6 + 0.4);
+      vy = (Math.random() - 0.5) * 0.5;
+      break;
+  }
+  const speed = CHAIN_BASE_SPEED * (0.6 + Math.random() * 0.6);
+  const hue = 200 + Math.random() * 80;
+  const intensity = clamp(gameState.effects.chainActivity || 0, 0, 1);
+  return { x, y, vx, vy, speed, hue, alpha: 0.08 + intensity * 0.4 + Math.random() * 0.2 };
+}
+
+function initChains() {
+  chains.length = 0;
+  const intensity = clamp(gameState.effects.chainActivity || 0, 0, 1);
+  const desired = Math.round(intensity * MAX_CHAIN_SLOTS);
+  for (let i = 0; i < desired; i++) {
+    chains.push(createChain());
+  }
+}
+
+function fillBackground() {
+  const richness = clamp(gameState.effects.gradientRichness || 0, 0, 1);
+  const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, Math.max(centerX, centerY));
+  gradient.addColorStop(0, `rgba(${20 + richness * 40}, ${28 + richness * 40}, ${60 + richness * 60}, ${0.3 + richness * 0.5})`);
+  gradient.addColorStop(0.55, `rgba(4, 6, ${18 + richness * 20}, ${0.65 + richness * 0.25})`);
+  gradient.addColorStop(1, 'rgba(0, 0, 8, 1)');
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+}
+
+function drawDust(focusX, focusY) {
+  ctx.save();
+  const glowFactor = clamp(gameState.effects.glow || 0, 0, 1);
+  ctx.globalAlpha = 0.12 + glowFactor * 0.22;
+  ctx.globalCompositeOperation = 'lighter';
+
+  const dustRadius = galaxyRadius * (1.5 + Math.pow(zoom, 0.3) * 0.4);
+  const innerRadius = dustRadius * 0.18;
+  const gradient = ctx.createRadialGradient(focusX, focusY, innerRadius, focusX, focusY, dustRadius);
+  gradient.addColorStop(0, `rgba(50, 80, 150, ${0.25 + glowFactor * 0.35})`);
+  gradient.addColorStop(0.45, `rgba(70, 110, 190, ${0.12 + glowFactor * 0.25})`);
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+  ctx.restore();
+}
+
+function drawCore(focusX, focusY) {
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  const coreRadius = galaxyRadius * (0.07 + Math.pow(zoom, 0.22) * 0.02);
+  const coreGradient = ctx.createRadialGradient(focusX, focusY, 0, focusX, focusY, coreRadius);
+  coreGradient.addColorStop(0, 'rgba(255, 255, 255, 0.7)');
+  coreGradient.addColorStop(0.4, 'rgba(230, 200, 255, 0.35)');
+  coreGradient.addColorStop(0.75, 'rgba(150, 150, 255, 0.12)');
+  coreGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+  ctx.fillStyle = coreGradient;
+  ctx.beginPath();
+  ctx.arc(focusX, focusY, coreRadius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function updateChains(delta, focusX, focusY) {
+  const intensity = clamp(gameState.effects.chainActivity || 0, 0, 1);
+  if (intensity <= 0.01) {
+    chains.length = 0;
+    return;
+  }
+  const desired = Math.max(1, Math.round(intensity * MAX_CHAIN_SLOTS));
+  while (chains.length < desired) {
+    chains.push(createChain());
+  }
+  if (Math.random() < CHAIN_SPAWN_CHANCE * (0.4 + intensity)) {
+    chains.push(createChain());
+  }
+  while (chains.length > desired) {
+    chains.pop();
+  }
+  if (!chains.length) return;
+  const dt = Math.max(0.5, delta / 16);
+  for (let i = 0; i < chains.length; i++) {
+    const chain = chains[i];
+    const dx = focusX - chain.x;
+    const dy = focusY - chain.y;
+    const distance = Math.hypot(dx, dy) + 1;
+    const grav = CHAIN_GRAVITY * dt;
+    chain.vx += (dx / distance) * grav;
+    chain.vy += (dy / distance) * grav;
+    const mag = Math.hypot(chain.vx, chain.vy) || 1;
+    chain.vx /= mag;
+    chain.vy /= mag;
+    const step = chain.speed * dt * 0.8 * (0.5 + zoom * 0.3);
+    chain.x += chain.vx * step * 16;
+    chain.y += chain.vy * step * 16;
+
+    if (
+      chain.x < -CHAIN_BUFFER ||
+      chain.x > width + CHAIN_BUFFER ||
+      chain.y < -CHAIN_BUFFER ||
+      chain.y > height + CHAIN_BUFFER
+    ) {
+      chains.splice(i, 1);
+      i--;
+    }
+  }
+}
+
+function drawChains(hueShift, pitchBlend, focusX, focusY) {
+  const intensity = clamp(gameState.effects.chainActivity || 0, 0, 1);
+  if (!chains.length || intensity <= 0.01) return;
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  const alphaBoost = 0.25 + intensity * 0.75;
+  for (const chain of chains) {
+    const baseHue = (chain.hue + hueShift * 0.4) % 360;
+    const headBrightness = 90;
+    const tailBrightness = 35;
+    for (let s = 0; s < CHAIN_LENGTH; s++) {
+      const fade = 1 - s / CHAIN_LENGTH;
+      if (fade <= 0.01) break;
+      const px = chain.x - chain.vx * CHAIN_SPACING * s;
+      const py = chain.y - chain.vy * CHAIN_SPACING * s;
+      ctx.globalAlpha = chain.alpha * fade * 0.8 * alphaBoost;
+      const brightness = lerp(headBrightness, tailBrightness, s / CHAIN_LENGTH);
+      const size = 1 + fade * 1.5;
+      ctx.fillStyle = `hsla(${baseHue}, 80%, ${brightness}%, 1)`;
+      ctx.beginPath();
+      ctx.arc(px, py, size, 0, TWO_PI);
+      ctx.fill();
+
+      if (s === 0) {
+        ctx.globalAlpha = chain.alpha * 0.8 * alphaBoost;
+        ctx.fillStyle = `hsla(${baseHue}, 95%, 95%, 1)`;
+        ctx.beginPath();
+        ctx.arc(px, py, size * 1.4, 0, TWO_PI);
+        ctx.fill();
+
+        ctx.globalAlpha = chain.alpha * 0.45 * alphaBoost;
+        ctx.beginPath();
+        ctx.arc(px, py, size * 2.3, 0, TWO_PI);
+        ctx.fill();
+      }
+    }
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+
+function renderParticles(time, focusX, focusY, delta) {
+  const viewDistance = baseDistance;
+  const cosYaw = Math.cos(yaw);
+  const sinYaw = Math.sin(yaw);
+  const cosPitch = Math.cos(pitch);
+  const sinPitch = Math.sin(pitch);
+  const items = [];
+  const ejectDrive = Math.min(2.2, ejectionLevel);
+  const ejectNormalized = Math.min(1, ejectionLevel);
+  const dt = Math.max(0.1, delta / 16);
+  const drag = Math.pow(RADIAL_DRAG, dt);
+  const rotationSign = orbitDirection || 1;
+  const pitchOffset = wrapAngle(pitch - INITIAL_PITCH);
+  const colorBlend = clamp(Math.abs(pitchOffset) / COLOR_PITCH_RANGE, 0, 1);
+  const gradientFactor = clamp(gameState.effects.gradientRichness || 0, 0, 1);
+  const glowFactor = clamp(gameState.effects.glow || 0, 0, 1);
+  const particleRatio = clamp(gameState.effects.particleFill || 0, 0, 1);
+  const structureFactor = particleRatio;
+  const spreadFactor = 0.05 + structureFactor * 0.95;
+  const structuralScale = 0.25 + (0.1 + structureFactor * 0.9) * 0.75;
+  const manualSpin = clamp(Math.abs(spinVelocity) * 90, 0, 1.4);
+  const passiveInfluence = clamp(passiveSpinCurrent / MAX_SPIN_VELOCITY, 0, 1);
+  const spinMultiplier = Math.max(gameState.effects.spinFactor || 0, manualSpin, passiveInfluence);
+  const activeParticles = Math.max(0, Math.floor(particles.length * particleRatio));
+  if (!activeParticles) {
+    return;
+  }
+  const saturationBase = lerp(28, 80, gradientFactor);
+  const hueShift = colorBlend * COLOR_SHIFT_RANGE_DEG * gradientFactor;
+
+  for (let i = 0; i < activeParticles; i++) {
+    const particle = particles[i];
+    particle.angle += particle.orbitalSpeed * rotationSign * spinMultiplier;
+
+    const radiusBase = (particle.radiusNorm + particle.radialJitter * (1 - particle.radiusNorm)) * galaxyRadius;
+    const baseRadius = Math.max(galaxyRadius * INNER_GAP * 0.85, radiusBase);
+
+    const ripple = 0.5 + 0.5 * Math.sin(time * 0.0024 + particle.escapePhase);
+    const outwardForce = spreadFactor * ejectDrive * particle.escapeWeight * ripple;
+    const inwardForce = particle.radialOffset * spreadFactor * (0.12 + particle.escapeCurve * 0.05);
+    particle.radialVelocity += (outwardForce - inwardForce) * dt * RADIAL_FORCE * (0.35 + spreadFactor * 0.9);
+    particle.radialVelocity *= drag;
+    particle.radialOffset = Math.max(0, Math.min(3.4, particle.radialOffset + particle.radialVelocity * dt * RADIAL_RETENTION));
+
+    if (ejectNormalized < RADIAL_SETTLE_THRESHOLD) {
+      const settle = Math.pow(RADIAL_SETTLE_DAMP, dt);
+      particle.radialVelocity *= settle;
+      particle.radialOffset *= settle;
+    }
+
+    const radialWeight = particle.radialOffset * spreadFactor;
+    const radiusScale = 1 + radialWeight * (0.25 + 0.25 * spreadFactor);
+    const tangentPush = rotationSign * radialWeight * galaxyRadius * (0.08 + spreadFactor * 0.25);
+
+    const radius = baseRadius * structuralScale * radiusScale;
+    const spiralTwist = radius * 0.0065;
+    const localAngle = particle.angle + particle.armOffset + particle.angleJitter + spiralTwist;
+
+    const wobble = Math.sin(time * 0.0012 + particle.noisePhase + radius * 0.01) * particle.verticalAmpNorm * galaxyRadius;
+    const cosAngle = Math.cos(localAngle);
+    const sinAngle = Math.sin(localAngle);
+    const px = cosAngle * radius - sinAngle * tangentPush;
+    const pz = sinAngle * radius + cosAngle * tangentPush;
+    const py = particle.heightNorm * galaxyRadius * 0.12 + wobble;
+
+    let x = px * cosYaw - pz * sinYaw;
+    let z = px * sinYaw + pz * cosYaw;
+
+    const y = py * cosPitch - z * sinPitch;
+    z = py * sinPitch + z * cosPitch;
+
+    const perspective = viewDistance / (viewDistance + z);
+    if (perspective <= 0) {
+      continue;
+    }
+
+    const screenX = x * perspective;
+    const screenY = y * perspective;
+
+    const baseHue = lerp(210, particle.baseHue, gradientFactor || 0);
+    const hue = (baseHue + hueShift) % 360;
+    const lightness = lerp(52, particle.lightness, gradientFactor * 0.9);
+    const alpha = particle.alpha * (0.35 + glowFactor * 0.65);
+    const color = `hsla(${hue}, ${saturationBase}%, ${lightness}%, ${alpha})`;
+
+    items.push({
+      depth: z,
+      x: focusX + screenX * zoom,
+      y: focusY + screenY * zoom,
+      size: Math.max(0.12, particle.size * perspective * Math.pow(zoom, 0.16) * (1 + particle.radialOffset * 0.18)),
+      glow: particle.glow * perspective * (0.6 + glowFactor * 0.8) * (1 + particle.radialOffset * 0.22),
+      color
+    });
+  }
+
+  items.sort((a, b) => b.depth - a.depth);
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+
+  for (const item of items) {
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = item.color;
+    ctx.beginPath();
+    ctx.arc(item.x, item.y, item.size, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.globalAlpha = Math.min(0.5, item.glow * 0.35);
+    ctx.fillStyle = 'rgba(170, 200, 255, 0.16)';
+    ctx.beginPath();
+    ctx.arc(item.x, item.y, item.size * 0.65, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+function renderSparkles(time, focusX, focusY) {
+  const sparkleFactor = clamp(gameState.effects.sparkleDensity || 0, 0, 1);
+  if (!sparkles.length || sparkleFactor <= 0.01) {
+    return;
+  }
+  const activeSparkles = Math.max(0, Math.floor(sparkles.length * sparkleFactor));
+  if (!activeSparkles) return;
+
+  const viewDistance = baseDistance * 1.1;
+  const cosYaw = Math.cos(sparkleYaw);
+  const sinYaw = Math.sin(sparkleYaw);
+  const cosPitch = Math.cos(sparklePitch);
+  const sinPitch = Math.sin(sparklePitch);
+  const pitchOffset = wrapAngle(pitch - INITIAL_PITCH);
+  const colorBlend = clamp(Math.abs(pitchOffset) / COLOR_PITCH_RANGE, 0, 1);
+  const gradientFactor = clamp(gameState.effects.gradientRichness || 0, 0, 1);
+  const hueShift = colorBlend * COLOR_SHIFT_RANGE_DEG * gradientFactor;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+
+  for (let i = 0; i < activeSparkles; i++) {
+    const sparkle = sparkles[i];
+    sparkle.angle += sparkle.speed;
+
+    const px = Math.cos(sparkle.angle) * sparkle.radius;
+    const pz = Math.sin(sparkle.angle) * sparkle.radius;
+    const py = sparkle.height;
+
+    let x = px * cosYaw - pz * sinYaw;
+    let z = px * sinYaw + pz * cosYaw;
+
+    const y = py * cosPitch - z * sinPitch;
+    z = py * sinPitch + z * cosPitch + baseDistance * 0.25;
+
+    const perspective = viewDistance / (viewDistance + z);
+    if (perspective <= 0) {
+      continue;
+    }
+
+    const screenX = x * perspective;
+    const screenY = y * perspective;
+    const flicker = Math.pow(Math.max(0, Math.sin(time * sparkle.flickerSpeed + sparkle.flickerPhase)), 1.6);
+    const alpha = (0.08 + flicker * 0.45) * (0.4 + sparkleFactor * 0.9);
+    const radius = sparkle.size * perspective * (0.3 + flicker * 0.7) * Math.pow(zoom, 0.08) * (0.7 + sparkleFactor * 0.6);
+    const hue = (sparkle.baseHue + hueShift) % 360;
+
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = `hsla(${hue}, 90%, 78%, 1)`;
+    ctx.beginPath();
+    ctx.arc(focusX + screenX * zoom, focusY + screenY * zoom, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+function animate() {
+  const time = performance.now();
+  let delta = time - lastFrameTime;
+  if (!Number.isFinite(delta) || delta <= 0) {
+    delta = 16;
+  }
+  delta = Math.min(60, delta);
+  advanceGame(delta);
+
+  spinVelocity *= Math.pow(SPIN_DECAY_PER_MS, delta);
+  if (pointer.dragging) {
+    spinVelocity = 0;
+  }
+  sparkleSpinVelocity *= Math.pow(SPIN_DECAY_PER_MS, delta);
+  if (pointer.dragging && pointer.affectsSparkles) {
+    sparkleSpinVelocity = SPARKLE_BASE_DRIFT;
+  }
+
+  if (Math.abs(spinVelocity) < 0.00001) {
+    spinVelocity = 0;
+  }
+  const passiveSpinSpeed = computePassiveSpinSpeed();
+  passiveSpinCurrent = passiveSpinSpeed;
+  const totalSpin = clamp(spinVelocity + passiveSpinSpeed, -MAX_SPIN_VELOCITY, MAX_SPIN_VELOCITY);
+  if (totalSpin !== 0) {
+    yaw = wrapAngle(yaw + totalSpin * delta);
+    orbitDirection = Math.sign(totalSpin);
+    accumulateRotationRewards(totalSpin, delta);
+  } else {
+    orbitDirection = orbitDirection || 1;
+  }
+  if (!pointer.affectsSparkles || !pointer.dragging) {
+    const spinReference = totalSpin !== 0 ? totalSpin : sparkleSpinVelocity || SPARKLE_BASE_DRIFT;
+    const targetSpin = Math.sign(spinReference) *
+      (SPARKLE_BASE_DRIFT + Math.min(0.00045, Math.abs(spinReference) * SPARKLE_WIND_COUPLING));
+    sparkleSpinVelocity += (targetSpin - sparkleSpinVelocity) * 0.05;
+  }
+  if (Math.abs(sparkleSpinVelocity) < 0.00001) {
+    sparkleSpinVelocity = Math.sign(sparkleSpinVelocity || 1) * SPARKLE_BASE_DRIFT;
+  }
+  sparkleYaw = wrapAngle(sparkleYaw + sparkleSpinVelocity * delta);
+
+  const spinAbs = Math.abs(totalSpin);
+  if (spinAbs > SPIN_EJECTION_THRESHOLD) {
+    const normalized = Math.min(1, (spinAbs - SPIN_EJECTION_THRESHOLD) / (MAX_SPIN_VELOCITY - SPIN_EJECTION_THRESHOLD));
+    ejectionLevel = Math.min(MAX_EJECTION_LEVEL, ejectionLevel + normalized * delta * SPIN_EJECTION_GAIN);
+  }
+
+  ejectionLevel = Math.max(0, ejectionLevel - delta * EJECTION_DECAY_PER_MS);
+
+  const focusX = centerX - cameraOffsetX * zoom;
+  const focusY = centerY - cameraOffsetY * zoom;
+  const pitchOffset = wrapAngle(pitch - INITIAL_PITCH);
+  const colorBlend = clamp(Math.abs(pitchOffset) / COLOR_PITCH_RANGE, 0, 1);
+  const hueShift = colorBlend * COLOR_SHIFT_RANGE_DEG;
+
+  fillBackground();
+  drawDust(focusX, focusY);
+  drawCore(focusX, focusY);
+  updateChains(delta, focusX, focusY);
+  drawChains(hueShift, colorBlend, focusX, focusY);
+  renderParticles(time, focusX, focusY, delta);
+  renderSparkles(time, focusX, focusY);
+  updateHud();
+
+  lastFrameTime = time;
+  requestAnimationFrame(animate);
+}
+
+function setupInteractions() {
+  canvas.addEventListener('pointerdown', (event) => {
+    storeTouchPointer(event);
+
+    if (event.pointerType === 'touch' && activeTouchPointers.size > 1) {
+      pointer.dragging = false;
+      pointer.yawVelocity = 0;
+      pointer.pitchVelocity = 0;
+      pointer.spinAccumulator = 0;
+      spinVelocity = 0;
+      pointer.affectsSparkles = false;
+      const pinch = computePinchSnapshot();
+      pinchLastDistance = pinch ? pinch.distance : null;
+    } else {
+      pointer.dragging = true;
+      pointer.lastX = event.clientX;
+      pointer.lastY = event.clientY;
+      pointer.lastTime = performance.now();
+      pointer.yawVelocity = 0;
+      pointer.pitchVelocity = 0;
+      pointer.spinAccumulator = 0;
+      spinVelocity = 0;
+      pinchLastDistance = null;
+      pointer.affectsSparkles = !isPointInsideGalaxy(event.clientX, event.clientY);
+      if (pointer.affectsSparkles) {
+        sparkleSpinVelocity = 0;
+      }
+    }
+
+    if (event.buttons === undefined || event.buttons === 0 || event.buttons === 1) {
+      tryCollectChainBonus(event);
+    }
+
+    if (canvas.setPointerCapture) {
+      canvas.setPointerCapture(event.pointerId);
+    }
+  });
+
+  canvas.addEventListener('pointermove', (event) => {
+    if (event.pointerType === 'touch') {
+      storeTouchPointer(event);
+      const pinch = computePinchSnapshot();
+      if (pinch) {
+        if (pinchLastDistance && pinchLastDistance > 0) {
+          const factor = clamp(pinch.distance / pinchLastDistance, 0.7, 1.3);
+          applyZoomFromClient(factor, pinch.centerX, pinch.centerY);
+        }
+        pinchLastDistance = pinch.distance;
+        pointer.dragging = false;
+        pointer.yawVelocity = 0;
+        pointer.pitchVelocity = 0;
+        pointer.spinAccumulator = 0;
+        spinVelocity = 0;
+        pointer.affectsSparkles = false;
+        return;
+      }
+      pinchLastDistance = null;
+      if (!pointer.dragging) {
+        pointer.dragging = true;
+        pointer.lastX = event.clientX;
+        pointer.lastY = event.clientY;
+        pointer.lastTime = performance.now();
+        pointer.yawVelocity = 0;
+        pointer.pitchVelocity = 0;
+        pointer.spinAccumulator = 0;
+        spinVelocity = 0;
+        pointer.affectsSparkles = !isPointInsideGalaxy(event.clientX, event.clientY);
+        if (pointer.affectsSparkles) {
+          sparkleSpinVelocity = 0;
+        }
+      }
+    }
+
+    if (!pointer.dragging) return;
+
+    const dx = event.clientX - pointer.lastX;
+    const dy = event.clientY - pointer.lastY;
+    const now = performance.now();
+    let dt = now - pointer.lastTime;
+    if (!Number.isFinite(dt) || dt <= 0) {
+      dt = 16;
+    }
+
+    const yawDirection = Math.cos(pitch) >= 0 ? 1 : -1;
+    const yawDelta = dx * 0.003 * yawDirection;
+    const pitchDelta = dy * 0.003;
+    const sparkleYawDirection = Math.cos(sparklePitch) >= 0 ? 1 : -1;
+    const sparkleYawDelta = dx * 0.003 * sparkleYawDirection;
+
+    yaw = wrapAngle(yaw + yawDelta);
+    if (yawDelta !== 0) {
+      orbitDirection = Math.sign(yawDelta);
+    }
+    pitch = wrapAngle(pitch + pitchDelta);
+    if (pointer.affectsSparkles) {
+      sparkleYaw = wrapAngle(sparkleYaw + sparkleYawDelta);
+      sparklePitch = wrapAngle(sparklePitch + pitchDelta);
+    }
+
+    const manualCap = getManualSpinLimit();
+    pointer.yawVelocity = clamp(yawDelta / dt, -manualCap, manualCap);
+    pointer.pitchVelocity = pitchDelta / dt;
+    pointer.spinAccumulator += dx * yawDirection;
+    if (Math.abs(pointer.spinAccumulator) > 1.5) {
+      const dragDir = Math.sign(pointer.spinAccumulator);
+      if (dragDir !== 0) {
+        orbitDirection = dragDir;
+      }
+    }
+    pointer.lastX = event.clientX;
+    pointer.lastY = event.clientY;
+    pointer.lastTime = now;
+  });
+
+  const endDrag = (event) => {
+    removeTouchPointer(event);
+
+    const pinch = computePinchSnapshot();
+    if (!pointer.dragging) {
+      pointer.spinAccumulator = 0;
+      pinchLastDistance = pinch ? pinch.distance : null;
+
+      if (!pinch && activeTouchPointers.size === 1) {
+        const remaining = activeTouchPointers.values().next().value;
+        pointer.dragging = true;
+        pointer.lastX = remaining.x;
+        pointer.lastY = remaining.y;
+        pointer.lastTime = performance.now();
+        pointer.yawVelocity = 0;
+        pointer.pitchVelocity = 0;
+        pointer.spinAccumulator = 0;
+        spinVelocity = 0;
+        pointer.affectsSparkles = !isPointInsideGalaxy(remaining.x, remaining.y);
+        if (pointer.affectsSparkles) {
+          sparkleSpinVelocity = 0;
+        }
+      }
+
+      if (event && canvas.releasePointerCapture) {
+        try {
+          canvas.releasePointerCapture(event.pointerId);
+        } catch (_) {
+          // ignore release errors when pointer already ended
+        }
+      }
+      return;
+    }
+
+    const dragAffectedSparkles = pointer.affectsSparkles;
+    pointer.dragging = false;
+    pointer.affectsSparkles = false;
+    const manualCap = getManualSpinLimit();
+    spinVelocity = clamp(pointer.yawVelocity, -manualCap, manualCap);
+    sparkleSpinVelocity = dragAffectedSparkles
+      ? clamp(pointer.yawVelocity, -manualCap, manualCap)
+      : sparkleSpinVelocity;
+    const dragDir = Math.sign(pointer.spinAccumulator);
+    if (dragDir !== 0) {
+      orbitDirection = dragDir;
+    } else if (spinVelocity !== 0) {
+      orbitDirection = Math.sign(spinVelocity);
+    }
+    pointer.spinAccumulator = 0;
+    const extraSpin = Math.max(0, Math.abs(spinVelocity) - SPIN_EJECTION_THRESHOLD);
+    if (extraSpin > 0) {
+      const normalized = clamp(extraSpin / (MAX_SPIN_VELOCITY - SPIN_EJECTION_THRESHOLD), 0, 1);
+      ejectionLevel = Math.min(MAX_EJECTION_LEVEL, ejectionLevel + normalized * RELEASE_EJECTION_GAIN);
+    }
+
+    if (event && canvas.releasePointerCapture) {
+      try {
+        canvas.releasePointerCapture(event.pointerId);
+      } catch (_) {
+        // ignore release errors when pointer already ended
+      }
+    }
+
+    if (activeTouchPointers.size === 1) {
+      const remaining = activeTouchPointers.values().next().value;
+      pointer.dragging = true;
+      pointer.lastX = remaining.x;
+      pointer.lastY = remaining.y;
+      pointer.lastTime = performance.now();
+      pointer.yawVelocity = 0;
+      pointer.pitchVelocity = 0;
+      pointer.spinAccumulator = 0;
+      spinVelocity = 0;
+      pointer.affectsSparkles = !isPointInsideGalaxy(remaining.x, remaining.y);
+      if (pointer.affectsSparkles) {
+        sparkleSpinVelocity = 0;
+      }
+    }
+  };
+
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+  canvas.addEventListener('pointerleave', endDrag);
+
+  canvas.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    const factor = Math.exp(-event.deltaY * 0.0015);
+    applyZoomFromClient(factor, event.clientX, event.clientY);
+  }, { passive: false });
+
+  window.addEventListener('resize', resize);
+  window.addEventListener('blur', () => {
+    pointer.dragging = false;
+    activeTouchPointers.clear();
+    pinchLastDistance = null;
+    pointer.spinAccumulator = 0;
+    pointer.yawVelocity = 0;
+    pointer.pitchVelocity = 0;
+    spinVelocity = 0;
+    sparkleSpinVelocity = 0;
+    pointer.affectsSparkles = false;
+  });
+}
+
+resize();
+initParticles();
+initSparkles();
+initChains();
+setupInteractions();
+animate();
+</script>
+</body>
+</html>
